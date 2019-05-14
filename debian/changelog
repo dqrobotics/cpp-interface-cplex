@@ -1,3 +1,9 @@
+libdqrobotics-interface-cplex (v0.1.1) UNRELEASED; urgency=medium
+
+  * Text version 
+
+ -- nml <nml@nml-MS-7B50>  Tue, 14 May 2019 14:27:25 +0900
+
 libdqrobotics-interface-cplex (0.1-0ppa0) oneiric; urgency=low
 
   * Initial upload!
