@@ -32,15 +32,15 @@ class CplexInterface
 
 public:
     /**
-     * @brief solveCanonicalLinearProgram
+     * @brief solveCanonicalLinearProgramWithLinearConstraints
      * Solves the Canonical Linear Program in the form
-     * min(g)  c'f
+     * min(g)  g'f
      * s.t.    Af=b;
      *         g \geq 0
      * using the dual-simplex algorithm.
      * @param f the n x 1 vector of the linear coeficients of the problem variables.
      * @param A the m x n matrix of equality constraints.
-     * @param b the m x 1 value for the quality constraints.
+     * @param b the m x 1 value for the equality constraints.
      * @param silent
      * @return the optimal g
      */
