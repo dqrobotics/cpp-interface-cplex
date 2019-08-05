@@ -7,5 +7,5 @@ set (CMAKE_CXX_STANDARD 11)
 ################################################################
 
 INSTALL(FILES
-    include/dqrobotics/interfaces/cplex_interface.h
-    DESTINATION "include/dqrobotics/interfaces")
+    include/dqrobotics/solvers/DQ_CPLEXSolver.h
+    DESTINATION "include/dqrobotics/solvers")
