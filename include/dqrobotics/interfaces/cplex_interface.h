@@ -23,56 +23,60 @@ Contributors:
 #ifndef DQ_CPLEX_INTERFACE_H
 #define DQ_CPLEX_INTERFACE_H
 
+#include <dqrobotics/solvers/DQ_QuadraticProgrammingSolver.h>
+
 #include <eigen3/Eigen/Dense>
 #include <ilcplex/ilocplex.h>
 
 using namespace Eigen;
 
-class CplexInterface
+namespace DQ_robotics
+class DQ_CPLEXSolver: public DQ_QuadraticProgrammingSolver
 {
 
 public:
-    /**
-     * @brief solveCanonicalLinearProgramWithLinearConstraints
-     * Solves the Canonical Linear Program in the form
-     * min(g)  g'f
-     * s.t.    Af=b;
-     *         g \geq 0
-     * using the dual-simplex algorithm.
-     * @param f the n x 1 vector of the linear coeficients of the problem variables.
-     * @param A the m x n matrix of equality constraints.
-     * @param b the m x 1 value for the equality constraints.
-     * @param silent
-     * @return the optimal g
+
+/**
+     * @brief solveCanonicalQuadraticProgramWithLinearinequality_constraints
+     *   Solves the Canonical Quadratic Program With Linear inequality_constraints in the form
+     *   min(x)  x'Hx+f'x
+     *   s.t.    Ax<=b
+     *           Aeqx=beq
+     * @param H the n x n matrix of the quadratic coeficitients of the decision variables.
+     * @param f the n x 1 vector of the linear coeficients of the decision variables.
+     * @param A the m x n matrix of inequality inequality_constraints.
+     * @param b the m x 1 value for the inequality inequality_constraints.
+     * @param Aeq the m x n matrix of equality inequality_constraints.
+     * @param beq the m x 1 value for the inequality inequality_constraints.
+     * @return the optimal x
      */
-    static VectorXd solveCanonicalLinearProgram(const MatrixXd &f, const MatrixXd& A, const MatrixXd &b, bool silent=true, bool* solved=nullptr)
-    {
-    
+VectorXd solve_quadratic_program(const MatrixXd &H, const MatrixXd &f, const MatrixXd &A, const MatrixXd &b, const MatrixXd& Aeq, const MatrixXd& beq)
 {
-    const int PROBLEM_SIZE    = Q.rows();
-    const int CONSTRAINT_SIZE = w.rows();
+    const int PROBLEM_SIZE = H.rows();
+    const int INEQUALITY_CONSTRAINT_SIZE = b.size();
+    const int EQUALITY_CONSTRAINT_SIZE = beq.size();
 
     ///Create optimization environment
     IloEnv env;
 
-    ///Optimized variables
+    ///Decision variables
     IloNumVarArray decision_variables(env);
     for(int i=0;i<PROBLEM_SIZE;i++)
         decision_variables.add(IloNumVar(env,-IloInfinity,+IloInfinity,ILOFLOAT));
 
     ///Objective function
-    ///QP in the form 0.5*x'*Q*x+c'x
+    //QP in the form 0.5*x'*H*x+f'x
     IloObjective objective = IloMinimize(env); //The objective function
 
-    IloNumArray linear_coeficient(env); //Each coeficient of c
+    IloNumArray linear_coeficient(env); //Each coeficient of f
     linear_coeficient.setSize(PROBLEM_SIZE);
 
-    //c'x
+    //f'x
     for(int i=0;i<PROBLEM_SIZE;i++)
         linear_coeficient[i] = c(i);
     objective.setLinearCoefs(decision_variables,linear_coeficient);
 
-    //0.5*x'*Q*x
+    //0.5*x'*H*x
     for(int i=0;i<PROBLEM_SIZE;i++)
     {
         for(int j=0;j<PROBLEM_SIZE;j++)
@@ -85,23 +89,39 @@ public:
     }
 
     ///Linear inequalities
-    IloRangeArray constraints(env);
+    IloRangeArray inequality_constraints(env);
     for(int i=0;i<CONSTRAINT_SIZE;i++)
-        constraints.add(IloRange(env,-IloInfinity,w(i)));
+        inequality_constraints.add(IloRange(env,-IloInfinity,b(i)));
 
-    //Wg <= w
-    IloNumArray cplex_W(env);
-    cplex_W.setSize(PROBLEM_SIZE);
-    for(int j=0;j<CONSTRAINT_SIZE;j++)
+    //Ax <= b
+    IloNumArray cplex_A(env);
+    cplex_A.setSize(PROBLEM_SIZE);
+    for(int j=0;j<INEQUALITY_CONSTRAINT_SIZE;j++)
     {
         for(int k=0;k<PROBLEM_SIZE;k++)
-            cplex_W[k] = W(j,k);
-        constraints[j].setLinearCoefs(decision_variables,cplex_W);
+            cplex_A[k] = A(j,k);
+        inequality_constraints[j].setLinearCoefs(decision_variables,cplex_A);
+    }
+
+    ///Linear inequalities
+    IloRangeArray equality_constraints(env);
+    for(int i=0;i<EQUALITY_CONSTRAINT_SIZE;i++)
+        equality_constraints.add(IloRange(env,beq(i),beq(i)));
+
+    //Aeqx = beq
+    IloNumArray cplex_Aeq(env);
+    cplex_Aeq.setSize(PROBLEM_SIZE);
+    for(int j=0;j<EQUALITY_CONSTRAINT_SIZE;j++)
+    {
+        for(int k=0;k<PROBLEM_SIZE;k++)
+            cplex_Aeq[k] = Aeq(j,k);
+        equality_constraints[j].setLinearCoefs(decision_variables,cplex_Aeq);
     }
 
     IloModel model(env);
     model.add(objective);
-    model.add(constraints);
+    model.add(inequality_constraints);
+    model.add(equality_constraints);
 
     IloCplex cplex(model);
 
@@ -112,19 +132,19 @@ public:
     cplex.setParam(IloCplex::Threads,1);
     cplex.setParam(IloCplex::ParallelMode,IloCplex::Deterministic);
 
-    if(silent)
+    /*if(silent)
     {
         cplex.setOut(env.getNullStream());
+    }*/
+
+    if(!cplex.solve())
+    {
+        throw std::runtime_error("Unable to solve quadratic program!!");
     }
 
-    if(! cplex.solve())
-    {
-        if(solved!=nullptr){*solved = false;}
-    }
-    if(solved!=nullptr){*solved = true;}
 
     IloNumArray outvalues(env);
-    if(!silent){std::cout << "Solution status " << cplex.getStatus() << std::endl;}
+    //if(!silent){std::cout << "Solution status " << cplex.getStatus() << std::endl;}
     cplex.getValues(outvalues,decision_variables);
 
     VectorXd g(PROBLEM_SIZE);
@@ -138,97 +158,6 @@ public:
 
     return g;
 }
-
-    /**
-     * @brief solveCanonicalQuadraticProgramWithLinearConstraints
-     *   Solves the Canonical Quadratic Program With Linear Constraints in the form
-     *   min(g)  g'Qg+c'g
-     *   s.t.    Wg<=w;
-     * @param Q the n x n matrix of the quadratic coeficitients of the decision variables.
-     * @param c the n x 1 vector of the linear coeficients of the decision variables.
-     * @param W the m x n matrix of inequality constraints.
-     * @param w the m x 1 value for the inequality constraints.
-     * @param silent
-     * @return the optimal g
-     */
-    static VectorXd solveCanonicalQuadraticProgramWithLinearConstraints(const MatrixXd &Q, const MatrixXd &c, const MatrixXd &W, const MatrixXd &w, bool silent=true, bool* solved=nullptr)
-    {
-        const int PROBLEM_SIZE    = Q.rows();
-
-    ///Create optimization environment
-    IloEnv env;
-
-    ///Optimized variables
-    IloNumVarArray decision_variables(env);
-    for(int i=0;i<PROBLEM_SIZE;i++)
-        decision_variables.add(IloNumVar(env,-IloInfinity,+IloInfinity,ILOFLOAT));
-
-    ///Objective function
-    ///QP in the form 0.5*x'*Q*x+c'x
-    IloObjective objective = IloMinimize(env); //The objective function
-
-    IloNumArray linear_coeficient(env); //Each coeficient of c
-    linear_coeficient.setSize(PROBLEM_SIZE);
-
-    //c'x
-    for(int i=0;i<PROBLEM_SIZE;i++)
-        linear_coeficient[i] = c(i);
-    objective.setLinearCoefs(decision_variables,linear_coeficient);
-
-    //0.5*x'*Q*x
-    for(int i=0;i<PROBLEM_SIZE;i++)
-    {
-        for(int j=0;j<PROBLEM_SIZE;j++)
-        {
-            if(i!=j)
-                objective.setQuadCoef(decision_variables[i],decision_variables[j],Q(i,j)+Q(j,i));
-            else
-                objective.setQuadCoef(decision_variables[i],decision_variables[j],Q(i,j));
-        }
-    }
-
-    IloModel model(env);
-    model.add(objective);
-
-    IloCplex cplex(model);
-
-    ///Settings I found to give the fastest solving for the conditions I tested with.
-    ///Single thread, deterministic mode (both mean the same thing basically)
-    ///Dual simplex as solver
-    cplex.setParam(IloCplex::RootAlg,IloCplex::Dual);
-    cplex.setParam(IloCplex::Threads,1);
-    cplex.setParam(IloCplex::ParallelMode,IloCplex::Deterministic);
-
-    if(silent)
-    {
-        cplex.setOut(env.getNullStream());
-    }
-
-    if(!cplex.solve())
-    {
-        if(solved!=nullptr){*solved = false;}
-        else
-        {
-            throw int(0);
-        }
-    }
-    if(solved!=nullptr){*solved = true;}
-
-    IloNumArray outvalues(env);
-    if(!silent){std::cout << "Solution status " << cplex.getStatus() << std::endl;}
-    cplex.getValues(outvalues,decision_variables);
-
-    VectorXd g(PROBLEM_SIZE);
-    for(int j=0;j<PROBLEM_SIZE;j++)
-    {
-        g(j)=outvalues[j];
-    }
-
-    //End enviroment
-    env.end();
-
-    return g;
-    }
 };
 
 #endif
