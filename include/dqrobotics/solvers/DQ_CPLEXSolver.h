@@ -37,7 +37,6 @@ class DQ_CPLEXSolver: public DQ_QuadraticProgrammingSolver
 private:
     bool show_output_;
 
-
 public:
 
     DQ_CPLEXSolver()
