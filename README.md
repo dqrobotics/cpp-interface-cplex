@@ -1,4 +1,4 @@
-# cpp-interface-cplex 
+# cpp-interface-cplex [![Build Status](https://travis-ci.com/dqrobotics/cpp-interface-cplex.svg?branch=master)](https://travis-ci.com/dqrobotics/cpp-interface-cplex)
 Interface between DQ Robotics and IBM's CPLEX
 
 # Installation in Ubuntu 16.04 or Ubuntu 18.04
