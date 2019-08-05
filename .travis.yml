@@ -17,6 +17,17 @@ matrix:
            - g++
            - libeigen3-dev
            - fakeroot
+           
+    - os: linux
+      dist: bionic
+      sudo: true
+      compiler: g++
+      addons:
+       apt:
+         packages: 
+           - g++
+           - libeigen3-dev
+           - fakeroot
 
 script:
      - sh .build.sh
