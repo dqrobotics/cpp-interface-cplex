@@ -59,7 +59,7 @@ public:
      * @param beq the m x 1 value for the inequality inequality_constraints.
      * @return the optimal x
      */
-    VectorXd solve_quadratic_program(const MatrixXd& H, const MatrixXd& f, const MatrixXd A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq)
+    VectorXd solve_quadratic_program(const MatrixXd& H, const MatrixXd& f, const MatrixXd A, const MatrixXd& b, const MatrixXd& Aeq, const MatrixXd& beq)
     {
         const int PROBLEM_SIZE = H.rows();
         const int INEQUALITY_CONSTRAINT_SIZE = b.size();
@@ -99,7 +99,7 @@ public:
 
         ///Linear inequalities
         IloRangeArray inequality_constraints(env);
-        for(int i=0;i<CONSTRAINT_SIZE;i++)
+        for(int i=0;i<INEQUALITY_CONSTRAINT_SIZE;i++)
             inequality_constraints.add(IloRange(env,-IloInfinity,b(i)));
 
         //Ax <= b
