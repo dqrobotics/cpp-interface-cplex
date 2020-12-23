@@ -46,17 +46,18 @@ public:
     ~DQ_CPLEXSolver()=default;
 
     /**
-     * @brief solveCanonicalQuadraticProgramWithLinearinequality_constraints
-     *   Solves the Canonical Quadratic Program With Linear inequality_constraints in the form
-     *   min(x)  x'Hx+f'x
-     *   s.t.    Ax<=b
-     *           Aeqx=beq
+     * @brief
+     *   Solves the following quadratic program
+     *   min(x)  0.5*x'Hx+f'x
+     *   s.t.    Ax<b
+     *           Aeqx=beq.
+     * Method signature is compatible with MATLAB's 'quadprog'.
      * @param H the n x n matrix of the quadratic coeficitients of the decision variables.
      * @param f the n x 1 vector of the linear coeficients of the decision variables.
-     * @param A the m x n matrix of inequality inequality_constraints.
-     * @param b the m x 1 value for the inequality inequality_constraints.
-     * @param Aeq the m x n matrix of equality inequality_constraints.
-     * @param beq the m x 1 value for the inequality inequality_constraints.
+     * @param A the m x n matrix of inequality constraints.
+     * @param b the m x 1 value for the inequality constraints.
+     * @param Aeq the m x n matrix of equality constraints.
+     * @param beq the m x 1 value for the inequality constraints.
      * @return the optimal x
      */
     VectorXd solve_quadratic_program(const MatrixXd& H, const MatrixXd& f, const MatrixXd A, const MatrixXd& b, const MatrixXd& Aeq, const MatrixXd& beq)
@@ -65,7 +66,22 @@ public:
         const int INEQUALITY_CONSTRAINT_SIZE = b.size();
         const int EQUALITY_CONSTRAINT_SIZE = beq.size();
 
-        ///Create optimization environment
+        ///Check sizes
+        //Objective function
+        if(H.rows()!=H.cols())
+            throw std::runtime_error("DQ_CPLEXSolver::solve_quadratic_program(): H must be symmetric. H.rows()="+std::to_string(H.rows())+" but H.cols()="+std::to_string(H.cols())+".");
+        if(f.size()!=H.rows())
+            throw std::runtime_error("DQ_CPLEXSolver::solve_quadratic_program(): f must be compatible with H. H.rows()=H.cols()="+std::to_string(H.rows())+" but f.size()="+std::to_string(f.size())+".");
+
+        //Inequality constraints
+        if(b.size()!=A.rows())
+            throw std::runtime_error("DQ_CPLEXSolver::solve_quadratic_program(): size of b="+std::to_string(b.size())+"should be compatible with rows of A="+std::to_string(A.rows())+".");
+
+        //Equality constraints
+        if(beq.size()!=Aeq.rows())
+            throw std::runtime_error("DQ_CPLEXSolver::solve_quadratic_program(): size of beq="+std::to_string(beq.size())+"should be compatible with rows of Aeq="+std::to_string(Aeq.rows())+".");
+
+        //Create optimization environment
         IloEnv env;
 
         ///Decision variables
@@ -74,7 +90,6 @@ public:
             decision_variables.add(IloNumVar(env,-IloInfinity,+IloInfinity,ILOFLOAT));
 
         ///Objective function
-        //QP in the form 0.5*x'*H*x+f'x
         IloObjective objective = IloMinimize(env); //The objective function
 
         IloNumArray linear_coeficient(env); //Each coeficient of f
@@ -85,15 +100,16 @@ public:
             linear_coeficient[i] = f(i);
         objective.setLinearCoefs(decision_variables,linear_coeficient);
 
-        //0.5*x'*H*x
+        //0.5*x'*H*x is to be calculated by this method to be compatible with MATLAB's 'quadprog', but CPLEX takes x'*H*x.
+        //Multiply all quadratic coeficients by 0.5 to compensate.
         for(int i=0;i<PROBLEM_SIZE;i++)
         {
-            for(int j=0;j<PROBLEM_SIZE;j++)
+            for(int j=0;j<=i;j++)
             {
                 if(i!=j)
-                    objective.setQuadCoef(decision_variables[i],decision_variables[j],H(i,j)+H(j,i));
+                    objective.setQuadCoef(decision_variables[i],decision_variables[j],0.5*(H(i,j)+H(j,i)));
                 else
-                    objective.setQuadCoef(decision_variables[i],decision_variables[j],H(i,j));
+                    objective.setQuadCoef(decision_variables[i],decision_variables[j],0.5*H(i,j));
             }
         }
 
@@ -129,17 +145,19 @@ public:
 
         IloModel model(env);
         model.add(objective);
-        model.add(inequality_constraints);
-        model.add(equality_constraints);
+        if(INEQUALITY_CONSTRAINT_SIZE>0)
+            model.add(inequality_constraints);
+        if(EQUALITY_CONSTRAINT_SIZE>0)
+            model.add(equality_constraints);
 
         IloCplex cplex(model);
 
         ///Settings I found to give the fastest solving for the conditions I tested with.
         ///Single thread, deterministic mode (both mean the same thing basically)
         ///Dual simplex as solver
-        cplex.setParam(IloCplex::RootAlg,IloCplex::Dual);
-        cplex.setParam(IloCplex::Threads,1);
-        cplex.setParam(IloCplex::ParallelMode,IloCplex::Deterministic);
+        cplex.setParam(IloCplex::Param::RootAlgorithm,IloCplex::Dual);
+        cplex.setParam(IloCplex::Param::Threads,1);
+        cplex.setParam(IloCplex::Param::Parallel,IloCplex::Deterministic);
 
         if(not show_output_)
         {
