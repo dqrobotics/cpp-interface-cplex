@@ -59,7 +59,7 @@ public:
      * @param beq the m x 1 value for the inequality inequality_constraints.
      * @return the optimal x
      */
-    VectorXd solve_quadratic_program(const MatrixXd& H, const MatrixXd& f, const MatrixXd A, const MatrixXd& b, const MatrixXd& Aeq, const MatrixXd& beq)
+    VectorXd solve_quadratic_program(const MatrixXd& H, const VectorXd& f, const MatrixXd A, const VectorXd& b, const MatrixXd& Aeq, const VectorXd& beq)
     {
         const int PROBLEM_SIZE = H.rows();
         const int INEQUALITY_CONSTRAINT_SIZE = b.size();
