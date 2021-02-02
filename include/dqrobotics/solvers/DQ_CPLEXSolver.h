@@ -39,18 +39,19 @@ private:
 
 public:
 
-    DQ_CPLEXSolver()
+    DQ_CPLEXSolver(bool show_output = false):
+        show_output_(show_output)
     {
-        show_output_ = false;
+
     }
     ~DQ_CPLEXSolver()=default;
 
     /**
      * @brief
      *   Solves the following quadratic program
-     *   min(x)  0.5*x'Hx+f'x
-     *   s.t.    Ax<b
-     *           Aeqx=beq.
+     *   min(x)  0.5*x'Hx + f'x
+     *   s.t.    Ax < b
+     *           Aeqx = beq.
      * Method signature is compatible with MATLAB's 'quadprog'.
      * @param H the n x n matrix of the quadratic coeficitients of the decision variables.
      * @param f the n x 1 vector of the linear coeficients of the decision variables.
