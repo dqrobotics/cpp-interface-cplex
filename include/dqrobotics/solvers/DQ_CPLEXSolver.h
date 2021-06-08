@@ -38,7 +38,7 @@ protected:
     bool show_output_;
     
     //Overload this method in a child class to change the configuration.
-    void _config_solver(IloCplex& cplex)
+    virtual void _config_solver(IloCplex& cplex)
     {
         ///Settings I found to give the fastest solving for the conditions I tested with.
         ///Single thread, deterministic mode (both mean the same thing basically)
