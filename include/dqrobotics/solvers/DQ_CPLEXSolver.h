@@ -34,11 +34,21 @@ namespace DQ_robotics
 {
 class DQ_CPLEXSolver: public DQ_QuadraticProgrammingSolver
 {
-private:
+protected:
     bool show_output_;
+    
+    //Overload this method in a child class to change the configuration.
+    void _config_solver(IloCplex& cplex)
+    {
+        ///Settings I found to give the fastest solving for the conditions I tested with.
+        ///Single thread, deterministic mode (both mean the same thing basically)
+        ///Dual simplex as solver
+        cplex.setParam(IloCplex::Param::RootAlgorithm,IloCplex::Dual);
+        cplex.setParam(IloCplex::Param::Threads,1);
+        cplex.setParam(IloCplex::Param::Parallel,IloCplex::Deterministic);   
+    }
 
 public:
-
     DQ_CPLEXSolver(bool show_output = false):
         show_output_(show_output)
     {
@@ -152,14 +162,9 @@ public:
             model.add(equality_constraints);
 
         IloCplex cplex(model);
-
-        ///Settings I found to give the fastest solving for the conditions I tested with.
-        ///Single thread, deterministic mode (both mean the same thing basically)
-        ///Dual simplex as solver
-        cplex.setParam(IloCplex::Param::RootAlgorithm,IloCplex::Dual);
-        cplex.setParam(IloCplex::Param::Threads,1);
-        cplex.setParam(IloCplex::Param::Parallel,IloCplex::Deterministic);
-
+        //Overload this method to change the default configuration.
+        _config_solver(cplex);
+        
         if(not show_output_)
         {
             cplex.setOut(env.getNullStream());
