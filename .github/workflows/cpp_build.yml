@@ -12,16 +12,13 @@ jobs:
       - name: Apt update
         run: sudo apt update
         
-      - name: Customize git
-        run: |
-          git submodule update --init --recursive
-        
       - name: Install prerequisites
         run: |
           sudo apt install cmake g++ libeigen3-dev fakeroot
           
       - name: Build & install DQRobotics
         run: |
+          git clone https://github.com/dqrobotics/cpp.git
           cd cpp
           chmod +x debian/rules
           fakeroot debian/rules clean
