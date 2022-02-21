@@ -1,0 +1,30 @@
+name: CPP Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Apt update
+        run: sudo apt update
+        
+      - name: Customize git
+        run: |
+          git submodule update --init --recursive
+        
+      - name: Install prerequisites
+        run: |
+          sudo apt install cmake g++ fakeroot
+          
+      - name: Install cpp-interface-cplex
+        run: |
+          chmod +x debian/rules
+          fakeroot debian/rules clean
+          fakeroot debian/rules build
+          fakeroot debian/rules binary
+          cd ..
+          sudo apt install ./*.deb
