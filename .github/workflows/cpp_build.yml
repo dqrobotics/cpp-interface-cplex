@@ -18,7 +18,17 @@ jobs:
         
       - name: Install prerequisites
         run: |
-          sudo apt install cmake g++ fakeroot
+          sudo apt install cmake g++ libeigen3-dev fakeroot
+          
+      - name: Build & install DQRobotics
+        run: |
+          cd cpp
+          chmod +x debian/rules
+          fakeroot debian/rules clean
+          fakeroot debian/rules build
+          fakeroot debian/rules binary
+          cd ..
+          sudo apt install ./*.deb
           
       - name: Install cpp-interface-cplex
         run: |
